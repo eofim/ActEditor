@@ -17,6 +17,9 @@ using GRF.FileFormats.SprFormat;
 using GRF.IO;
 using GrfToWpfBridge;
 using TokeiLibrary;
+using TokeiLibrary.Paths;
+using Utilities.Services;
+using Utilities.Extension;
 using GRF.Image;
 
 namespace ActEditor.Core.Mcp {
