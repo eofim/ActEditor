@@ -18,3 +18,12 @@ This is an **early MVP** for the fork's in-process named-pipe bridge. The bridge
 - The bridge is single-instance; do not run two ActEditor windows concurrently.
 - Saving supports existing loose ACT/SPR paths, not new unsaved documents or archive entries.
 - Not yet Windows build-tested. Verify project dependencies, functionality and transaction rollback on representative ACT/SPR files before using production assets.
+
+## Recolor via AI
+1. Select BGRA32 or Indexed8 sprite images (Ctrl/Shift on the sprite strip) and call `act_get_state`.
+2. Call `act_plan_tone` with `document_id`, `expected_revision`, `mode` and tone adjustments. Values: `hue` -180..180 degrees; `saturation`, `lightness`, `brightness`, `contrast` -1..1. Optional `use_target_color`, `target_color: "#RRGGBB"`, `hue_tolerance` 0..0.5, `minimum_saturation` 0..1.
+3. Inspect the returned changed counts and `other_sprites_affected` list.
+4. Apply with `act_apply_tone` using `plan_id`, matching revision and `confirm: true`. Indexed8 recolor touching other sprites additionally requires `allow_shared_palette: true`.
+5. Review and save explicitly. In-memory Undo is available.
+
+This tone effect is adapted from [zakeph/ActEditor, branch mio](https://github.com/zakeph/ActEditor/tree/mio). The rest of that fork's binary resources, personal scripts and bulk generated images are intentionally excluded.
