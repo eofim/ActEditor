@@ -262,6 +262,8 @@ namespace ActEditor.Core {
 			_scriptLoader.AddScriptsToMenu(new EditClearPalette(), this, _mainMenu);
 			_scriptLoader.AddScriptsToMenu(new EditPalette(), this, _mainMenu);
 			_scriptLoader.AddScriptsToMenu(new EditPaletteAdvanced(), this, _mainMenu);
+			_scriptLoader.AddScriptsToMenu(new EditBgra32Tones(), this, _mainMenu);
+			_scriptLoader.AddScriptsToMenu(new EditIndexed8Tones(), this, _mainMenu);
 			_scriptLoader.AddScriptsToMenu(new ImportPaletteFrom(), this, _mainMenu);
 			
 			_scriptLoader.AddScriptsToMenu(new EditAnchor(), this, _mainMenu);
