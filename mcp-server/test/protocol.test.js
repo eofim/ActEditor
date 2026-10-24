@@ -28,7 +28,7 @@ test('MCP initializes and lists the editor tools',async()=>{
     assert.equal(init.result.serverInfo.name,'acteditor-mcp');
     const list=await s.request('tools/list');
     const names=list.result.tools.map(x=>x.name);
-    for(const name of ['act_get_state','act_export_sprites','act_plan_import','act_apply_import','act_undo'])assert.ok(names.includes(name));
+    for(const name of ['act_get_state','act_export_sprites','act_plan_import','act_apply_import','act_undo','act_plan_tone','act_apply_tone'])assert.ok(names.includes(name));
     assert.equal(names.length,new Set(names).size);
   }finally{s.close()}
 });
