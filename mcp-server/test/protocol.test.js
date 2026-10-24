@@ -2,9 +2,10 @@ import { spawn } from 'node:child_process';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createInterface } from 'node:readline';
+import { fileURLToPath } from 'node:url';
 
 function session() {
-  const proc=spawn(process.execPath,['src/index.js'],{cwd:new URL('../',import.meta.url).pathname,stdio:['pipe','pipe','pipe']});
+  const proc=spawn(process.execPath,['src/index.js'],{cwd:fileURLToPath(new URL('../',import.meta.url)),stdio:['pipe','pipe','pipe']});
   const output=createInterface({input:proc.stdout});
   const responses=new Map();
   output.on('line',line=>{const msg=JSON.parse(line);const cb=responses.get(msg.id);if(cb){responses.delete(msg.id);cb(msg)}});
