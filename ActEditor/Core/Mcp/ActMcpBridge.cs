@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using ActEditor.Core.WPF.Dialogs;
 using GRF.FileFormats.SprFormat;
+using GRF.IO;
 using GRF.Image;
 
 namespace ActEditor.Core.Mcp {
