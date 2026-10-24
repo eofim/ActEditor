@@ -24,6 +24,11 @@ namespace ActEditor.Core.DrawingComponents {
 		private string _toolTip;
 
 		public bool Selected { get; set; }
+		private bool _persistentSelected;
+		public void SetPersistentSelection(bool selected) {
+			_persistentSelected = selected;
+			_borderEvents.BorderBrush = selected ? SpriteBorderBrush : (Selected ? SpriteBorderBrush : Brushes.Transparent);
+		}
 		public bool IsPreviewing { get; set; }
 		public int ContentWidth => (int)(_image.Width + 2);
 
@@ -94,6 +99,8 @@ namespace ActEditor.Core.DrawingComponents {
 		}
 
 		private void _borderEvents_MouseDown(object sender, MouseButtonEventArgs e) {
+			if (e.ChangedButton == MouseButton.Left)
+				_spriteSelector.SelectSpriteByMouse(SpriteIndex, Keyboard.Modifiers);
 			ShowSelected(true);
 		}
 
@@ -106,7 +113,7 @@ namespace ActEditor.Core.DrawingComponents {
 				_spriteSelector.UpdateAllHoverExcept(this);
 			}
 			else
-				_borderEvents.BorderBrush = Brushes.Transparent;
+				_borderEvents.BorderBrush = _persistentSelected ? SpriteBorderBrush : Brushes.Transparent;
 
 			Selected = value;
 		}
