@@ -26,6 +26,41 @@ namespace ActEditor.Core.WPF.EditorControls {
 	/// Interaction logic for SpriteSelector.xaml
 	/// </summary>
 	public partial class SpriteSelector : UserControl {
+		
+		private readonly HashSet<int> _mcpSelection = new HashSet<int>();
+		private int _mcpSelectionAnchor = -1;
+
+		public int[] GetSelectedSpriteIds() {
+			int count = _editor?.Act?.Sprite?.NumberOfImagesLoaded ?? 0;
+			return _mcpSelection.Where(i => i >= 0 && i < count).OrderBy(i => i).ToArray();
+		}
+		public void SetSelectedSpriteIds(IEnumerable<int> ids, string mode = "replace") {
+			if (mode == "replace") _mcpSelection.Clear();
+			else if (mode != "add" && mode != "remove") throw new ArgumentException("Invalid selection mode.");
+			foreach (int id in ids) {
+				if (mode == "remove") _mcpSelection.Remove(id); else _mcpSelection.Add(id);
+			}
+			_mcpSelectionAnchor = _mcpSelection.Count > 0 ? _mcpSelection.Max() : -1;
+			RefreshMcpSelection();
+		}
+		public void SelectSpriteByMouse(int index, ModifierKeys modifiers) {
+			if (_editor?.Act?.Sprite == null || index < 0 || index >= _editor.Act.Sprite.NumberOfImagesLoaded) return;
+			if ((modifiers & ModifierKeys.Shift) != 0 && _mcpSelectionAnchor >= 0) {
+				if ((modifiers & ModifierKeys.Control) == 0) _mcpSelection.Clear();
+				foreach (int i in Enumerable.Range(Math.Min(index, _mcpSelectionAnchor), Math.Abs(index - _mcpSelectionAnchor) + 1)) _mcpSelection.Add(i);
+			}
+			else if ((modifiers & ModifierKeys.Control) != 0) {
+				if (!_mcpSelection.Add(index)) _mcpSelection.Remove(index);
+				_mcpSelectionAnchor = index;
+			}
+			else { _mcpSelection.Clear(); _mcpSelection.Add(index); _mcpSelectionAnchor = index; }
+			RefreshMcpSelection();
+		}
+		private void RefreshMcpSelection() {
+			foreach (var sprite in _dp.Children.OfType<SpriteImageControl>())
+				sprite.SetPersistentSelection(_mcpSelection.Contains(sprite.SpriteIndex));
+		}
+
 		private readonly Type[] _updateCommandTypes = { typeof(Flip), typeof(SpriteCommand), typeof(RemoveCommand), typeof(Insert), typeof(ChangePalette) };
 		private IFrameRendererEditor _editor;
 		private int _previousPosition;
@@ -227,6 +262,8 @@ namespace ActEditor.Core.WPF.EditorControls {
 		}
 
 		private void _actEditor_ActLoaded(object sender) {
+			_mcpSelection.Clear();
+			_mcpSelectionAnchor = -1;
 			if (_editor.Act == null) return;
 
 			_editor.Act.Commands.CommandExecuted += _commandChanged;
@@ -313,6 +350,8 @@ namespace ActEditor.Core.WPF.EditorControls {
 			}
 
 			UpdateVisibleOnly();
+			_mcpSelection.RemoveWhere(i => i >= spr.NumberOfImagesLoaded);
+			RefreshMcpSelection();
 		}
 
 		public void Update() {

@@ -270,6 +270,105 @@ namespace ActEditor.Core.Scripting.Scripts {
 		#endregion
 	}
 
+	public class EditBgra32Tones : IActScript {
+		#region IActScript Members
+
+		public void Execute(Act act, int selectedActionIndex, int selectedFrameIndex, int[] selectedLayerIndexes) {
+			var selection = ActEditorWindow.Instance.TabEngine.GetCurrentTab()?.SpriteSelector.GetSelectedSpriteIds() ?? new int[0];
+			var selectedBgra32Indexes = selection.Length > 0 ? selection.Where(index => index >= 0 && index < act.Sprite.Images.Count && act.Sprite.Images[index].GrfImageType == GrfImageType.Bgra32).Distinct().ToList() : selectedLayerIndexes
+				.Select(layerIndex => act[selectedActionIndex, selectedFrameIndex, layerIndex].GetAbsoluteSpriteId(act.Sprite))
+				.Where(index => index >= 0 && index < act.Sprite.Images.Count && act.Sprite.Images[index].GrfImageType == GrfImageType.Bgra32)
+				.Distinct()
+				.ToList();
+
+			Spr originalSprite = new Spr(act.Sprite);
+			var dialog = new Bgra32EditorDialog(act.Sprite, selectedBgra32Indexes);
+			dialog.Owner = WpfUtilities.TopWindow;
+			dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+			dialog.PreviewChanged += delegate {
+				act.InvalidateVisual();
+				act.InvalidateSpriteVisual();
+			};
+
+			bool? result = dialog.ShowDialog();
+			Spr resultSprite = dialog.ResultSprite;
+			dialog.RestoreOriginal();
+
+			if (result == true && resultSprite != null) {
+				act.Commands.SetSprite(resultSprite);
+				act.InvalidateVisual();
+				act.InvalidateSpriteVisual();
+			}
+			else {
+				for (int i = 0; i < act.Sprite.Images.Count; i++) {
+					act.Sprite.Images[i] = originalSprite.Images[i].Copy();
+				}
+
+				act.InvalidateVisual();
+				act.InvalidateSpriteVisual();
+			}
+		}
+
+		public bool CanExecute(Act act, int selectedActionIndex, int selectedFrameIndex, int[] selectedLayerIndexes) {
+			return act != null && act.Sprite.NumberOfBgra32Images > 0;
+		}
+
+		public object DisplayName => "BGRA32 editor...";
+		public string Group => "Edit";
+		public string InputGesture => null;
+		public string Image => "pal.png";
+
+		#endregion
+	}
+
+	public class EditIndexed8Tones : IActScript {
+		public void Execute(Act act, int selectedActionIndex, int selectedFrameIndex, int[] selectedLayerIndexes) {
+			var selection = ActEditorWindow.Instance.TabEngine.GetCurrentTab()?.SpriteSelector.GetSelectedSpriteIds() ?? new int[0];
+			var selectedIndexed8Indexes = selection.Length > 0 ? selection.Where(index => index >= 0 && index < act.Sprite.Images.Count && act.Sprite.Images[index].GrfImageType == GrfImageType.Indexed8).Distinct().ToList() : selectedLayerIndexes
+				.Select(layerIndex => act[selectedActionIndex, selectedFrameIndex, layerIndex].GetAbsoluteSpriteId(act.Sprite))
+				.Where(index => index >= 0 && index < act.Sprite.Images.Count && act.Sprite.Images[index].GrfImageType == GrfImageType.Indexed8)
+				.Distinct()
+				.ToList();
+
+			Spr originalSprite = new Spr(act.Sprite);
+			var dialog = new Bgra32EditorDialog(act.Sprite, selectedIndexed8Indexes, ToneEditorMode.Indexed8);
+			dialog.Owner = WpfUtilities.TopWindow;
+			dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+			dialog.PreviewChanged += delegate {
+				act.InvalidateVisual();
+				act.InvalidateSpriteVisual();
+			};
+
+			bool? result = dialog.ShowDialog();
+			Spr resultSprite = dialog.ResultSprite;
+			dialog.RestoreOriginal();
+
+			if (result == true && resultSprite != null) {
+				act.Commands.SetSprite(resultSprite);
+			}
+			else {
+				for (int i = 0; i < act.Sprite.Images.Count; i++) {
+					act.Sprite.Images[i] = originalSprite.Images[i].Copy();
+				}
+
+				if (act.Sprite.Palette != null && originalSprite.Palette != null)
+					act.Sprite.Palette.SetPalette(originalSprite.Palette.BytePalette);
+			}
+
+			act.InvalidateVisual();
+			act.InvalidateSpriteVisual();
+		}
+
+		public bool CanExecute(Act act, int selectedActionIndex, int selectedFrameIndex, int[] selectedLayerIndexes) {
+			return act != null && act.Sprite.NumberOfIndexed8Images > 0 && act.Sprite.Palette != null;
+		}
+
+		public object DisplayName => "Indexed8 editor...";
+		public string Group => "Edit";
+		public string InputGesture => null;
+		public string Image => "pal.png";
+	}
+
 	public class ImportPaletteFrom : IActScript {
 		#region IActScript Members
 

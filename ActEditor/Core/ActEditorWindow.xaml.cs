@@ -53,6 +53,7 @@ namespace ActEditor.Core {
 		private readonly WpfRecentFiles _recentFiles;
 		private readonly ScriptLoader _scriptLoader;
 		private readonly TabEngine _tabEngine;
+		private ActEditor.Core.Mcp.ActMcpBridge _mcpBridge;
 		private EditorPosition _editorPosition = new EditorPosition();
 		private SplashWindow _splashWindow;
 
@@ -86,6 +87,8 @@ namespace ActEditor.Core {
 			SizeToContent = SizeToContent.Manual;
 			_editorPosition.Load(this);
 			_initializeScripts();
+			_mcpBridge = new ActEditor.Core.Mcp.ActMcpBridge(this);
+			_mcpBridge.Start();
 
 			try {
 				if (!_parseCommandLineArguments()) {
@@ -259,6 +262,8 @@ namespace ActEditor.Core {
 			_scriptLoader.AddScriptsToMenu(new EditClearPalette(), this, _mainMenu);
 			_scriptLoader.AddScriptsToMenu(new EditPalette(), this, _mainMenu);
 			_scriptLoader.AddScriptsToMenu(new EditPaletteAdvanced(), this, _mainMenu);
+			_scriptLoader.AddScriptsToMenu(new EditBgra32Tones(), this, _mainMenu);
+			_scriptLoader.AddScriptsToMenu(new EditIndexed8Tones(), this, _mainMenu);
 			_scriptLoader.AddScriptsToMenu(new ImportPaletteFrom(), this, _mainMenu);
 			
 			_scriptLoader.AddScriptsToMenu(new EditAnchor(), this, _mainMenu);
@@ -403,6 +408,7 @@ namespace ActEditor.Core {
 
 			_metaGrf?.Dispose();
 			_scriptLoader?.Dispose();
+			_mcpBridge?.Dispose();
 		}
 
 		protected override void OnClosing(CancelEventArgs e) {

@@ -142,6 +142,7 @@
     <Reference Include="System.Threading.Tasks.Extensions, Version=4.2.1.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Threading.Tasks.Extensions.4.6.0\lib\net462\System.Threading.Tasks.Extensions.dll</HintPath>
     </Reference>
+    <Reference Include="System.Web.Extensions" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xaml" />
     <Reference Include="System.Xml" />
@@ -164,6 +165,7 @@
     <Compile Include="ApplicationConfiguration\ActEditorCommands.cs" />
     <Compile Include="ApplicationConfiguration\ActEditorConfiguration.cs" />
     <Compile Include="ApplicationConfiguration\SelfPatcher.cs" />
+    <Compile Include="Core\Mcp\ActMcpBridge.cs" />
     <Compile Include="Components\ActLoadService.cs" />
     <Compile Include="Core\ActEditorWindow.xaml.cs">
       <DependentUpon>ActEditorWindow.xaml</DependentUpon>
@@ -378,6 +380,7 @@
     </Compile>
     <EmbeddedResource Include="Resources\Scripts\script11_palette_sheet.cs" />
     <EmbeddedResource Include="Resources\Scripts\script12_remove_unused_palette.cs" />
+    <EmbeddedResource Include="Resources\Scripts\script13_remove_all_sounds.cs" />
     <EmbeddedResource Include="Resources\Scripts\dummy_script.cs" />
     <Compile Include="Tools\PaletteEditorTool\ResizeDialog.xaml.cs">
       <DependentUpon>ResizeDialog.xaml</DependentUpon>
@@ -390,6 +393,9 @@
     <Compile Include="Tools\PaletteEditorTool\SpriteEditorTools.cs" />
     <Compile Include="Tools\PaletteEditorTool\SpriteMoveOperation.cs" />
     <Compile Include="Tools\PaletteEditorTool\SpriteGenericOperations.cs" />
+    <Compile Include="Tools\PaletteEditorTool\Bgra32EditorDialog.xaml.cs">
+      <DependentUpon>Bgra32EditorDialog.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Tools\PaletteEditorTool\SpriteLoadAndSaveService.cs" />
     <Compile Include="Tools\PaletteEditorTool\SpritePasteOperation.cs" />
     <Compile Include="Tools\PaletteEditorTool\SpriteSelection.cs" />
@@ -610,6 +616,10 @@
     <Page Include="Tools\GrfShellExplorer\GrfExplorer.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Tools\PaletteEditorTool\Bgra32EditorDialog.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
     </Page>
     <Page Include="Tools\PaletteEditorTool\ImageViewer.xaml">
       <Generator>MSBuild:Compile</Generator>
