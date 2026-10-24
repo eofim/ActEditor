@@ -1,0 +1,27 @@
+name: ActEditor MCP validation
+on:
+  push:
+    branches: [feat/acteditor-mcp]
+  pull_request:
+    paths:
+      - 'ActEditor/**'
+      - 'mcp-server/**'
+      - '.github/workflows/acteditor-mcp.yml'
+jobs:
+  node-mcp:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check mcp-server/src/index.js
+      - run: npm test
+        working-directory: mcp-server
+  wpf-build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: microsoft/setup-msbuild@v2
+      - run: nuget restore ActEditor.sln -NonInteractive
+      - run: msbuild ActEditor.sln /m /p:Configuration=Release /p:Platform="Any CPU" /v:minimal
