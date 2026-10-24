@@ -4,6 +4,9 @@ using System.IO;
 using System.IO.Pipes;
 using System.Linq;
 using System.Security.AccessControl;
+using System.Globalization;
+using System.Windows.Media;
+using ActEditor.Tools.PaletteEditorTool;
 using System.Security.Cryptography;
 using System.Security.Principal;
 using System.Text;
@@ -23,6 +26,18 @@ namespace ActEditor.Core.Mcp {
         private volatile bool _running;
         private NamedPipeServerStream _listener;
         private ImportPlan _plan;
+        private TonePlan _tonePlan;
+
+        private sealed class TonePlan {
+            public string Id;
+            public string Document;
+            public int Revision;
+            public string Mode;
+            public int[] Ids;
+            public ToneOptions Options;
+            public int[] AffectedOutsideSelection;
+            public int Changed;
+        }
 
         private sealed class ImportItem {
             public int Index;
@@ -186,11 +201,14 @@ namespace ActEditor.Core.Mcp {
             if (method == "export_sprites") return Export(Current(args), args);
             if (method == "plan_import") return PlanImport(Current(args), args);
             if (method == "apply_import") return ApplyImport(Current(args), args);
+            if (method == "plan_tone") return PlanTone(Current(args), args);
+            if (method == "apply_tone") return ApplyTone(Current(args), args);
             if (method == "undo" || method == "redo") {
                 var tab = Current(args);
                 CheckRevision(tab, args);
                 if (method == "undo") tab.Undo(); else tab.Redo();
                 _plan = null;
+                _tonePlan = null;
                 return Describe(tab);
             }
             if (method == "save_document") {
@@ -316,6 +334,144 @@ namespace ActEditor.Core.Mcp {
                 throw;
             }
         }
+        private static double DoubleValue(IDictionary<string, object> args, string key, double fallback = 0) {
+            var raw = Arg(args, key);
+            return raw == null ? fallback : Convert.ToDouble(raw, CultureInfo.InvariantCulture);
+        }
+        private static double InRange(IDictionary<string, object> args, string key, double min, double max, double fallback = 0) {
+            double n = DoubleValue(args, key, fallback);
+            if (double.IsNaN(n) || double.IsInfinity(n) || n < min || n > max)
+                throw new InvalidOperationException("Invalid tone option: " + key);
+            return n;
+        }
+        private static ToneOptions ParseTone(IDictionary<string, object> args) {
+            var opt = Arg(args, "tone") as IDictionary<string, object>;
+            if (opt == null) throw new InvalidOperationException("tone options are required.");
+            var options = new ToneOptions {
+                Hue = InRange(opt, "hue", -180, 180),
+                Saturation = InRange(opt, "saturation", -1, 1),
+                Lightness = InRange(opt, "lightness", -1, 1),
+                Brightness = InRange(opt, "brightness", -1, 1),
+                Contrast = InRange(opt, "contrast", -1, 1),
+                UseTargetColor = Bool(opt, "use_target_color"),
+                HueTolerance = InRange(opt, "hue_tolerance", 0, 0.5, 0.125),
+                MinimumSaturation = InRange(opt, "minimum_saturation", 0, 1, 0.10)
+            };
+            if (options.UseTargetColor) {
+                string color = Str(opt, "target_color");
+                if (color == null || color.Length != 7 || color[0] != '#')
+                    throw new InvalidOperationException("target_color must be #RRGGBB.");
+                byte r, g, b;
+                if (!byte.TryParse(color.Substring(1, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out r) ||
+                    !byte.TryParse(color.Substring(3, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out g) ||
+                    !byte.TryParse(color.Substring(5, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out b))
+                    throw new InvalidOperationException("Invalid target color.");
+                options.TargetColor = Color.FromRgb(r, g, b);
+            }
+            return options;
+        }
+        private object PlanTone(TabAct tab, IDictionary<string, object> args) {
+            CheckRevision(tab, args);
+            string mode = Str(args, "mode", "bgra32");
+            if (mode != "bgra32" && mode != "indexed8") throw new InvalidOperationException("Invalid tone mode.");
+            var sprite = tab.Act.Sprite;
+            int[] ids;
+            string scope = Str(args, "scope", "selected");
+            if (scope == "selected") ids = tab.SpriteSelector.GetSelectedSpriteIds();
+            else if (scope == "all") ids = Enumerable.Range(0, sprite.NumberOfImagesLoaded).ToArray();
+            else if (scope == "ids") ids = IntArray(Arg(args, "ids"));
+            else throw new InvalidOperationException("Invalid scope.");
+            ids = ids.Distinct().OrderBy(i => i).ToArray();
+            if (ids.Length == 0 || ids.Any(i => i < 0 || i >= sprite.NumberOfImagesLoaded))
+                throw new InvalidOperationException("No valid sprites for recolor.");
+            var type = mode == "indexed8" ? GrfImageType.Indexed8 : GrfImageType.Bgra32;
+            ids = ids.Where(i => sprite.Images[i].GrfImageType == type).ToArray();
+            if (ids.Length == 0) throw new InvalidOperationException("No images of requested format in selection.");
+            var options = ParseTone(args);
+            int changed = 0;
+            int[] outside = new int[0];
+            if (mode == "bgra32") {
+                foreach (var id in ids) {
+                    var original = sprite.Images[id];
+                    var candidate = original.Copy();
+                    Bgra32EditorDialog.ApplyTone(candidate, options);
+                    if (!original.Pixels.SequenceEqual(candidate.Pixels)) changed++;
+                }
+            }
+            else {
+                if (sprite.Palette == null || sprite.Palette.BytePalette == null)
+                    throw new InvalidOperationException("Indexed8 palette unavailable.");
+                var before = sprite.Palette.BytePalette;
+                var after = (byte[])before.Clone();
+                var used = new HashSet<int>();
+                foreach (int id in ids)
+                    foreach (byte index in sprite.Images[id].Pixels)
+                        if (index > 0) used.Add(index);
+                Bgra32EditorDialog.ApplyToneToPalette(after, used, options);
+                var modified = new HashSet<int>(used.Where(index => !before.Skip(index * 4).Take(4).SequenceEqual(after.Skip(index * 4).Take(4))));
+                changed = modified.Count;
+                var selected = new HashSet<int>(ids);
+                outside = Enumerable.Range(0, sprite.NumberOfIndexed8Images)
+                    .Where(id => !selected.Contains(id) && sprite.Images[id].Pixels.Any(px => modified.Contains(px)))
+                    .ToArray();
+            }
+            _tonePlan = new TonePlan {
+                Id = Guid.NewGuid().ToString("N"), Document = DocumentId(tab), Revision = Revision(tab),
+                Mode = mode, Options = options, Ids = ids, AffectedOutsideSelection = outside, Changed = changed
+            };
+            return new {
+                plan_id = _tonePlan.Id, document_id = _tonePlan.Document, revision = _tonePlan.Revision,
+                mode, selected_indices = ids, changed_images_or_palette_entries = changed,
+                other_sprites_affected = outside,
+                note = mode == "indexed8" ? "Indexed8 recolor changes the global palette. Other images may share these colors." :
+                    "BGRA32 pixel recolor keeps transparency, sprite indexes and original dimensions."
+            };
+        }
+        private object ApplyTone(TabAct tab, IDictionary<string, object> args) {
+            if (!Bool(args, "confirm")) throw new InvalidOperationException("Tone application requires confirm=true.");
+            CheckRevision(tab, args);
+            var plan = _tonePlan;
+            if (plan == null || plan.Id != Str(args, "plan_id") ||
+                plan.Document != DocumentId(tab) || plan.Revision != Revision(tab))
+                throw new InvalidOperationException("Recolor plan expired. Plan again.");
+            if (plan.AffectedOutsideSelection.Length > 0 && !Bool(args, "allow_shared_palette"))
+                throw new InvalidOperationException("Shared Indexed8 palette affects other sprites; set allow_shared_palette=true explicitly.");
+            _tonePlan = null;
+            if (plan.Changed == 0) return new { applied = 0, state = Describe(tab) };
+            bool started = false;
+            try {
+                tab.Act.Commands.ActEditBegin("MCP: recolor " + plan.Mode);
+                started = true;
+                if (plan.Mode == "indexed8") {
+                    var sprite = tab.Act.Sprite;
+                    var next = (byte[])sprite.Palette.BytePalette.Clone();
+                    var used = plan.Ids.SelectMany(id => sprite.Images[id].Pixels.Select(i => (int)i))
+                        .Where(i => i != 0).Distinct().ToArray();
+                    Bgra32EditorDialog.ApplyToneToPalette(next, used, plan.Options);
+                    tab.Act.Commands.SpriteSetPalette(next);
+                }
+                else {
+                    foreach (int id in plan.Ids) {
+                        var image = tab.Act.Sprite.Images[id].Copy();
+                        Bgra32EditorDialog.ApplyTone(image, plan.Options);
+                        if (!image.Pixels.SequenceEqual(tab.Act.Sprite.Images[id].Pixels))
+                            tab.SpriteManager.ReplaceImage(SpriteIndex.FromAbsoluteIndex(id, tab.Act.Sprite), image);
+                    }
+                }
+                tab.Act.Commands.ActEditEnd();
+                started = false;
+                tab.Act.InvalidateVisual();
+                tab.Act.InvalidateSpriteVisual();
+                tab.SpriteSelector.Update();
+                tab.UpdatePrimary();
+                return new { applied = plan.Changed, state = Describe(tab) };
+            }
+            catch {
+                if (started) tab.Act.Commands.ActCancelEdit();
+                throw;
+            }
+        }
+
         public void Dispose() {
             _running = false;
             try { _listener?.Dispose(); } catch (IOException) { } catch (ObjectDisposedException) { }
