@@ -30,7 +30,7 @@ namespace ActEditor.Core.Scripting {
 	public class ScriptLoader : IDisposable {
 		public const string OutputPath = "Scripts";
 		public const string OverrideIndex = "__IndexOverride";
-		internal static string[] ScriptNames = { "script_sample", "script0_magnify", "script1_replace_color", "script1_replace_color_all", "script2_expand", "script4_generate_single_sprite", "script5_remove_unused_sprites", "script6_merge_layers", "script7_add_effect1", "script8_add_frames", "script9_chibi_grf", "script10_trim_images", "script11_palette_sheet", "script12_remove_unused_palette",  };
+		internal static string[] ScriptNames = { "script_sample", "script0_magnify", "script1_replace_color", "script1_replace_color_all", "script2_expand", "script4_generate_single_sprite", "script5_remove_unused_sprites", "script6_merge_layers", "script7_add_effect1", "script8_add_frames", "script9_chibi_grf", "script10_trim_images", "script11_palette_sheet", "script12_remove_unused_palette", "script13_remove_all_sounds",  };
 		internal static string[] Libraries = {"GRF.dll", "Utilities.dll", "TokeiLibrary.dll", "ErrorManager.dll"};
 		private static ConfigAsker _librariesConfiguration;
 		private FileSystemWatcher _fsw;
